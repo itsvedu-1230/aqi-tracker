@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bareilly Air Quality Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #1B2226;
+    --surface: #232D33;
+    --surface-2: #2B363D;
+    --text: #EDE6D8;
+    --text-muted: #8B9498;
+    --good: #4E9A85;
+    --warn: #D9A441;
+    --bad: #C0432E;
+    --accent: #8FA85E;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: linear-gradient(180deg, #1B2226 0%, #20292E 100%);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    padding: 2.5rem 1.25rem 4rem;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; }
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+  }
+  h1 {
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    font-weight: 800;
+    margin: 0 0 2rem;
+    letter-spacing: -0.02em;
+  }
+  .hero {
+    background: var(--surface);
+    border-radius: 18px;
+    padding: 2.25rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .hero-top { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+  .aqi-number {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 4.5rem;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .aqi-band {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .summary-text { color: var(--text-muted); margin-top: 0.75rem; font-size: 1rem; line-height: 1.5; }
+
+  /* Signature element: a "visibility bar" -- instead of a generic
+     circular gauge, this reads left-to-right like a scale of how far
+     you could see, from clear air to thick haze, with a marker
+     showing where today sits. */
+  .visibility-bar {
+    position: relative;
+    margin-top: 1.75rem;
+    height: 14px;
+    border-radius: 999px;
+    background: linear-gradient(90deg,
+      #3E7C6F 0%, #8FA85E 16%, #D9A441 33%, #D9722C 50%, #C0432E 75%, #7A2E3A 100%);
+  }
+  .visibility-marker {
+    position: absolute;
+    top: -7px;
+    width: 3px;
+    height: 28px;
+    background: var(--text);
+    left: 15.75%;
+    transform: translateX(-50%);
+    box-shadow: 0 0 8px rgba(237,230,216,0.6);
+  }
+  .visibility-labels {
+    display: flex; justify-content: space-between;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem; color: var(--text-muted);
+    margin-top: 0.5rem;
+  }
+
+  .anomaly-badge {
+    margin-top: 1.25rem;
+    display: inline-block;
+    background: rgba(192,67,46,0.15);
+    color: #E08A78;
+    border: 1px solid rgba(192,67,46,0.4);
+    padding: 0.4rem 0.8rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+  }
+
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .stat-card {
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 1.25rem;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .stat-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.4rem; }
+  .stat-value { font-family: 'IBM Plex Mono', monospace; font-size: 1.6rem; font-weight: 700; }
+  .stat-sub { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+  .chart-card {
+    background: var(--surface);
+    border-radius: 18px;
+    padding: 1.75rem;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .chart-title { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem; }
+
+  footer {
+    margin-top: 2rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Personal air quality tracker</div>
+  <h1>Bareilly Air Quality</h1>
+
+  <div class="hero">
+    <div class="hero-top">
+      <div class="aqi-number">63</div>
+      <div class="aqi-band">Satisfactory</div>
+    </div>
+    <div class="summary-text">Today's AQI in Bareilly is 63 (Satisfactory).</div>
+    <div class="visibility-bar"><div class="visibility-marker"></div></div>
+    <div class="visibility-labels"><span>Good</span><span>Moderate</span><span>Poor</span><span>Severe</span></div>
+    
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Current AQI band</div>
+      <div class="stat-value" style="color:#8FA85E">Satisfactory</div>
+    </div>
+    
+    <div class="stat-card">
+      <div class="stat-label">Readings collected</div>
+      <div class="stat-value">1</div>
+      <div class="stat-sub">days of history</div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title">AQI over time (with 7-day rolling average)</div>
+    <canvas id="aqiChart" height="110"></canvas>
+  </div>
+
+  <footer>
+    Source: WAQI (World Air Quality Index) &middot; Last updated 2026-08-09T10:23:49.769039+00:00 UTC
+  </footer>
+</div>
+
+<script>
+  const ctx = document.getElementById('aqiChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ["2026-08-09T10:23:20.305962+00:00"].map(d => d.slice(5, 10)),
+      datasets: [
+        {
+          label: 'Daily AQI',
+          data: [63],
+          borderColor: '#8B9498',
+          backgroundColor: 'transparent',
+          pointRadius: 0,
+          borderWidth: 1,
+          tension: 0.2,
+        },
+        {
+          label: '7-day average',
+          data: [63.0],
+          borderColor: '#8FA85E',
+          backgroundColor: 'transparent',
+          pointRadius: 0,
+          borderWidth: 2.5,
+          tension: 0.3,
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: '#8B9498', font: { family: 'IBM Plex Mono' } } }
+      },
+      scales: {
+        x: { ticks: { color: '#8B9498' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#8B9498' }, grid: { color: 'rgba(255,255,255,0.06)' } }
+      }
+    }
+  });
+</script>
+</body>
+</html>

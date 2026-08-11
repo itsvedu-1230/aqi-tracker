@@ -1,0 +1,59 @@
+# This file tells GitHub: "on a schedule, spin up a temporary Linux
+# machine, run these commands, and save whatever changed back to the
+# repo." It's how the tracker keeps running even when your laptop is
+# off — GitHub's own servers do the work.
+
+name: Update AQI Dashboard
+
+on:
+  schedule:
+    # Cron syntax: minute hour day month weekday, always in UTC.
+    # "30 2 * * *" = 02:30 UTC every day = 08:00 IST every day.
+    - cron: "30 2 * * *"
+  # Lets you trigger it by hand from the Actions tab, without waiting
+  # for the schedule — useful for testing.
+  workflow_dispatch:
+
+# Needed so the workflow is allowed to commit the updated database
+# and dashboard back into the repo.
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Fetch today's reading
+        env:
+          AQI_TOKEN: ${{ secrets.AQI_TOKEN }}
+          CITY: ${{ vars.CITY }}
+        run: python fetch_aqi.py
+
+      - name: Analyze
+        env:
+          CITY: ${{ vars.CITY }}
+        run: python analyze.py
+
+      - name: Rebuild dashboard
+        env:
+          CITY: ${{ vars.CITY }}
+        run: python generate_dashboard.py
+
+      - name: Commit updated data and dashboard
+        run: |
+          git config user.name "aqi-tracker-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/aqi.db data/summary.json docs/index.html
+          git diff --staged --quiet || git commit -m "Daily AQI update: $(date -u +'%Y-%m-%d')"
+          git push

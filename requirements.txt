@@ -1,0 +1,8 @@
+# fetch_aqi.py, analyze.py and generate_dashboard.py only use Python's
+# standard library (urllib, sqlite3, json, statistics), so there is
+# nothing to install for the core pipeline to run.
+#
+# This file exists so the GitHub Actions workflow has something to
+# point `pip install -r` at, and so you have a natural place to add
+# packages later (e.g. `pandas` if you outgrow raw SQL, or
+# `anthropic` if you add an LLM-written weekly summary).
