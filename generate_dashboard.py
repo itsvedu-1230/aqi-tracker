@@ -33,21 +33,28 @@ def render_no_data_page(city: str) -> str:
 def render_dashboard(summary: dict) -> str:
     city = summary["city"].title()
     dates_json = json.dumps(summary["dates"])
-    aqi_json = json.dumps(summary["aqi_values"])
+    aqi_json = json.dumps(summary["daily_avg_aqi"])
     rolling_json = json.dumps(summary["rolling_7d"])
 
-    latest_aqi = summary["latest_aqi"]
+    latest_avg = summary["latest_avg_aqi"]
     band = summary["latest_band"]
     color = summary["latest_color"]
     wow = summary["week_over_week_pct"]
     summary_text = summary["summary_text"]
     generated_at = summary["generated_at"]
     is_anomaly = summary["is_anomaly"]
+    samples_today = summary["samples_today"]
+    is_partial_day = summary["is_partial_day"]
 
-    # Position (0-100%) of today's reading along the visibility bar,
+    # Position (0-100%) of today's average along the visibility bar,
     # capped at 400 AQI = 100% since "Severe" and beyond all mean
     # roughly the same thing in practice: don't go outside.
-    marker_pct = max(0, min(100, (latest_aqi / 400) * 100))
+    marker_pct = max(0, min(100, (latest_avg / 400) * 100))
+
+    hero_label = "Today's average (so far)" if is_partial_day else "Latest daily average"
+    samples_note = (f"Based on {samples_today} reading"
+                     f"{'s' if samples_today != 1 else ''} "
+                     f"{'so far today' if is_partial_day else 'that day'}")
 
     wow_html = ""
     if wow is not None:
@@ -114,6 +121,14 @@ def render_dashboard(summary: dict) -> str:
     margin-bottom: 1.5rem;
     border: 1px solid rgba(255,255,255,0.06);
   }}
+  .hero-label {{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.6rem;
+  }}
   .hero-top {{ display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; }}
   .aqi-number {{
     font-family: 'IBM Plex Mono', monospace;
@@ -126,6 +141,11 @@ def render_dashboard(summary: dict) -> str:
     font-size: 1.2rem;
     font-weight: 600;
     color: var(--accent);
+  }}
+  .samples-note {{
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.3rem;
   }}
   .summary-text {{ color: var(--text-muted); margin-top: 0.75rem; font-size: 1rem; line-height: 1.5; }}
 
@@ -203,10 +223,12 @@ def render_dashboard(summary: dict) -> str:
   <h1>{city} Air Quality</h1>
 
   <div class="hero">
+    <div class="hero-label">{hero_label}</div>
     <div class="hero-top">
-      <div class="aqi-number">{latest_aqi}</div>
+      <div class="aqi-number">{latest_avg}</div>
       <div class="aqi-band">{band}</div>
     </div>
+    <div class="samples-note">{samples_note}</div>
     <div class="summary-text">{summary_text}</div>
     <div class="visibility-bar"><div class="visibility-marker"></div></div>
     <div class="visibility-labels"><span>Good</span><span>Moderate</span><span>Poor</span><span>Severe</span></div>
@@ -220,14 +242,14 @@ def render_dashboard(summary: dict) -> str:
     </div>
     {wow_html}
     <div class="stat-card">
-      <div class="stat-label">Readings collected</div>
-      <div class="stat-value">{len(summary["aqi_values"])}</div>
+      <div class="stat-label">Days tracked</div>
+      <div class="stat-value">{len(summary["daily_avg_aqi"])}</div>
       <div class="stat-sub">days of history</div>
     </div>
   </div>
 
   <div class="chart-card">
-    <div class="chart-title">AQI over time (with 7-day rolling average)</div>
+    <div class="chart-title">Daily average AQI over time (with 7-day rolling average)</div>
     <canvas id="aqiChart" height="110"></canvas>
   </div>
 
@@ -244,7 +266,7 @@ def render_dashboard(summary: dict) -> str:
       labels: {dates_json}.map(d => d.slice(5, 10)),
       datasets: [
         {{
-          label: 'Daily AQI',
+          label: 'Daily average AQI',
           data: {aqi_json},
           borderColor: '#8B9498',
           backgroundColor: 'transparent',

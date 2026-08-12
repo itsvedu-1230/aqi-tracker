@@ -16,14 +16,29 @@ WAQI API  --->  data/aqi.db (SQLite)  --->  data/summary.json  --->  docs/index.
 ```
 
 1. `fetch_aqi.py` calls the WAQI API for one city and appends a row to `data/aqi.db`.
-2. `analyze.py` reads the full history, computes a 7-day rolling average,
-   week-over-week % change, and flags anomalies (z-score > 2), writing
-   the result to `data/summary.json`.
+   This now runs **every 3 hours** (8 times/day), not once — see step 4.
+2. `analyze.py` reads the full history, **groups same-day samples into a
+   true daily average** (converted to Asia/Kolkata local time first, so
+   "today" means today in the tracked city, not in UTC), then computes a
+   7-day rolling average of those daily averages, week-over-week %
+   change, and flags anomalies (z-score > 2 vs. the last 14 daily
+   averages). Writes the result to `data/summary.json`.
 3. `generate_dashboard.py` turns that JSON into a single static HTML
    file at `docs/index.html`, styled and charted with Chart.js.
 4. A GitHub Actions workflow (`.github/workflows/update.yml`) runs all
-   three every day at 08:00 IST and commits the results back to the repo.
+   three every 3 hours and commits the results back to the repo.
 5. GitHub Pages serves `docs/index.html` as a live website — free, no server.
+
+### Why daily averages instead of a single snapshot
+
+A single 8am reading is one moment in a city's air, not "today's air
+quality" — AQI can swing a lot between morning traffic and afternoon.
+Averaging several samples across the day gives a more honest number,
+and also means one freak spike (a truck idling right next to the
+sensor, say) gets diluted into the day's average instead of distorting
+the whole day. The dashboard is upfront about this: while today is
+still in progress, it's labeled "so far" with the sample count shown,
+rather than presented as a final number.
 
 ## Setup from scratch
 
