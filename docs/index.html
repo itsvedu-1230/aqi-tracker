@@ -68,6 +68,36 @@
     font-weight: 600;
     color: var(--accent);
   }
+  .current-reading {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.9rem 1.1rem;
+    background: var(--surface-2);
+    border-radius: 12px;
+    margin-left: auto;
+  }
+  .current-reading-number {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.8rem;
+    font-weight: 700;
+  }
+  .current-reading-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+  .current-reading-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .current-reading-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }
   .samples-note {
     font-size: 0.8rem;
     color: var(--text-muted);
@@ -153,9 +183,16 @@
     <div class="hero-top">
       <div class="aqi-number">63.0</div>
       <div class="aqi-band">Satisfactory</div>
+      <div class="current-reading">
+        <div class="current-reading-number" style="color:#8FA85E">63</div>
+        <div class="current-reading-meta">
+          <div class="current-reading-label">Current &middot; Satisfactory</div>
+          <div class="current-reading-time">as of 2:54 AM IST</div>
+        </div>
+      </div>
     </div>
-    <div class="samples-note">Based on 1 reading so far today</div>
-    <div class="summary-text">Average AQI in Bareilly so far today is 63.0 (Satisfactory), based on 1 reading.</div>
+    <div class="samples-note">Based on 2 readings so far today</div>
+    <div class="summary-text">Average AQI in Bareilly so far today is 63.0 (Satisfactory), based on 2 readings. The most recent single reading, at 2:54 AM, was 63 (Satisfactory).</div>
     <div class="visibility-bar"><div class="visibility-marker"></div></div>
     <div class="visibility-labels"><span>Good</span><span>Moderate</span><span>Poor</span><span>Severe</span></div>
     
@@ -180,7 +217,7 @@
   </div>
 
   <footer>
-    Source: WAQI (World Air Quality Index) &middot; Last updated 2026-08-12T21:15:44.511497+00:00 UTC
+    Source: WAQI (World Air Quality Index) &middot; Last updated 2026-08-12T21:24:37.554169+00:00 UTC
   </footer>
 </div>
 
