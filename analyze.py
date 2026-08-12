@@ -177,6 +177,22 @@ def build_summary(city: str):
     samples_today = sample_counts[latest_date]
     label, color = band_for(latest_avg)
 
+    # The single most recent raw sample, separate from the daily
+    # average above. `readings` is sorted oldest-first, so the last
+    # entry is the latest instantaneous reading — useful to show
+    # alongside the average since the average can lag a sudden spike
+    # or dip by several hours.
+    latest_reading = readings[-1]
+    latest_instant_aqi = latest_reading["aqi"]
+    instant_label, instant_color = band_for(latest_instant_aqi)
+    instant_local_dt = datetime.fromisoformat(latest_reading["fetched_at"]).astimezone(LOCAL_TZ)
+    # Built manually rather than with "%-I" — that flag strips the
+    # leading zero from the hour on Linux/Mac but isn't supported on
+    # Windows' strftime, and this script needs to run on both.
+    hour_12 = instant_local_dt.hour % 12 or 12
+    am_pm = "AM" if instant_local_dt.hour < 12 else "PM"
+    latest_instant_time = f"{hour_12}:{instant_local_dt.minute:02d} {am_pm}"
+
     # Is "today" (in Asia/Kolkata) still in progress, or is this a
     # fully-elapsed day? Lets the dashboard say "so far" honestly
     # instead of implying the average is final while the day is
@@ -191,7 +207,9 @@ def build_summary(city: str):
     day_phrase = "so far today" if is_partial_day else f"on {latest_date}"
     lines = [f"Average AQI in {city.title()} {day_phrase} is {latest_avg} "
              f"({label}), based on {samples_today} reading"
-             f"{'s' if samples_today != 1 else ''}."]
+             f"{'s' if samples_today != 1 else ''}. "
+             f"The most recent single reading, at {latest_instant_time}, "
+             f"was {latest_instant_aqi} ({instant_label})."]
     if wow_change is not None:
         direction = "worse" if wow_change > 0 else "better"
         lines.append(f"That's {abs(wow_change)}% {direction} than last week.")
@@ -203,6 +221,10 @@ def build_summary(city: str):
     return {
         "city": city,
         "has_data": True,
+        "latest_instant_aqi": latest_instant_aqi,
+        "latest_instant_band": instant_label,
+        "latest_instant_color": instant_color,
+        "latest_instant_time": latest_instant_time,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "dates": dates,
         "daily_avg_aqi": daily_avg,

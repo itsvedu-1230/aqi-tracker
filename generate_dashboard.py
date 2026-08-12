@@ -45,6 +45,10 @@ def render_dashboard(summary: dict) -> str:
     is_anomaly = summary["is_anomaly"]
     samples_today = summary["samples_today"]
     is_partial_day = summary["is_partial_day"]
+    instant_aqi = summary["latest_instant_aqi"]
+    instant_band = summary["latest_instant_band"]
+    instant_color = summary["latest_instant_color"]
+    instant_time = summary["latest_instant_time"]
 
     # Position (0-100%) of today's average along the visibility bar,
     # capped at 400 AQI = 100% since "Severe" and beyond all mean
@@ -142,6 +146,36 @@ def render_dashboard(summary: dict) -> str:
     font-weight: 600;
     color: var(--accent);
   }}
+  .current-reading {{
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.9rem 1.1rem;
+    background: var(--surface-2);
+    border-radius: 12px;
+    margin-left: auto;
+  }}
+  .current-reading-number {{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.8rem;
+    font-weight: 700;
+  }}
+  .current-reading-meta {{
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }}
+  .current-reading-label {{
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }}
+  .current-reading-time {{
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }}
   .samples-note {{
     font-size: 0.8rem;
     color: var(--text-muted);
@@ -227,6 +261,13 @@ def render_dashboard(summary: dict) -> str:
     <div class="hero-top">
       <div class="aqi-number">{latest_avg}</div>
       <div class="aqi-band">{band}</div>
+      <div class="current-reading">
+        <div class="current-reading-number" style="color:{instant_color}">{instant_aqi}</div>
+        <div class="current-reading-meta">
+          <div class="current-reading-label">Current &middot; {instant_band}</div>
+          <div class="current-reading-time">as of {instant_time} IST</div>
+        </div>
+      </div>
     </div>
     <div class="samples-note">{samples_note}</div>
     <div class="summary-text">{summary_text}</div>
