@@ -47,6 +47,14 @@
     margin-bottom: 1.5rem;
     border: 1px solid rgba(255,255,255,0.06);
   }
+  .hero-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.6rem;
+  }
   .hero-top { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
   .aqi-number {
     font-family: 'IBM Plex Mono', monospace;
@@ -59,6 +67,11 @@
     font-size: 1.2rem;
     font-weight: 600;
     color: var(--accent);
+  }
+  .samples-note {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.3rem;
   }
   .summary-text { color: var(--text-muted); margin-top: 0.75rem; font-size: 1rem; line-height: 1.5; }
 
@@ -136,11 +149,13 @@
   <h1>Bareilly Air Quality</h1>
 
   <div class="hero">
+    <div class="hero-label">Today's average (so far)</div>
     <div class="hero-top">
-      <div class="aqi-number">63</div>
+      <div class="aqi-number">63.0</div>
       <div class="aqi-band">Satisfactory</div>
     </div>
-    <div class="summary-text">Today's AQI in Bareilly is 63 (Satisfactory).</div>
+    <div class="samples-note">Based on 1 reading so far today</div>
+    <div class="summary-text">Average AQI in Bareilly so far today is 63.0 (Satisfactory), based on 1 reading.</div>
     <div class="visibility-bar"><div class="visibility-marker"></div></div>
     <div class="visibility-labels"><span>Good</span><span>Moderate</span><span>Poor</span><span>Severe</span></div>
     
@@ -153,19 +168,19 @@
     </div>
     
     <div class="stat-card">
-      <div class="stat-label">Readings collected</div>
-      <div class="stat-value">3</div>
+      <div class="stat-label">Days tracked</div>
+      <div class="stat-value">4</div>
       <div class="stat-sub">days of history</div>
     </div>
   </div>
 
   <div class="chart-card">
-    <div class="chart-title">AQI over time (with 7-day rolling average)</div>
+    <div class="chart-title">Daily average AQI over time (with 7-day rolling average)</div>
     <canvas id="aqiChart" height="110"></canvas>
   </div>
 
   <footer>
-    Source: WAQI (World Air Quality Index) &middot; Last updated 2026-08-12T04:20:45.405801+00:00 UTC
+    Source: WAQI (World Air Quality Index) &middot; Last updated 2026-08-12T21:15:44.511497+00:00 UTC
   </footer>
 </div>
 
@@ -174,11 +189,11 @@
   new Chart(ctx, {
     type: 'line',
     data: {
-      labels: ["2026-08-09T10:23:20.305962+00:00", "2026-08-11T10:01:40.869036+00:00", "2026-08-12T04:20:45.320736+00:00"].map(d => d.slice(5, 10)),
+      labels: ["2026-08-09", "2026-08-11", "2026-08-12", "2026-08-13"].map(d => d.slice(5, 10)),
       datasets: [
         {
-          label: 'Daily AQI',
-          data: [63, 63, 63],
+          label: 'Daily average AQI',
+          data: [63.0, 63.0, 63.0, 63.0],
           borderColor: '#8B9498',
           backgroundColor: 'transparent',
           pointRadius: 0,
@@ -187,7 +202,7 @@
         },
         {
           label: '7-day average',
-          data: [63.0, 63.0, 63.0],
+          data: [63.0, 63.0, 63.0, 63.0],
           borderColor: '#8FA85E',
           backgroundColor: 'transparent',
           pointRadius: 0,
