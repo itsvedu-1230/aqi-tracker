@@ -3,18 +3,17 @@
 # repo." It's how the tracker keeps running even when your laptop is
 # off — GitHub's own servers do the work.
 #
-# Runs every 3 hours (8 times/day) rather than once, so analyze.py has
-# multiple intraday samples to average into a true daily figure,
-# instead of treating one snapshot as "today's AQI".
+# Runs every 3 hours (8 times/day), pulling from CPCB's official
+# real-time API (via data.gov.in) rather than WAQI -- switched after
+# discovering WAQI's single Bareilly station had gone stale for ~2
+# months while still returning a cached "success" response.
 
 name: Update AQI Dashboard
 
 on:
   schedule:
     # Cron syntax: minute hour day month weekday, always in UTC.
-    # "0 */3 * * *" = every 3 hours, on the hour, every day:
-    # 00:00, 03:00, 06:00, 09:00, 12:00, 15:00, 18:00, 21:00 UTC
-    # = 5:30am, 8:30am, 11:30am, 2:30pm, 5:30pm, 8:30pm, 11:30pm, 2:30am IST
+    # "0 */3 * * *" = every 3 hours, on the hour, every day.
     - cron: "0 */3 * * *"
   # Lets you trigger it by hand from the Actions tab, without waiting
   # for the schedule — useful for testing.
@@ -42,7 +41,7 @@ jobs:
 
       - name: Fetch today's reading
         env:
-          AQI_TOKEN: ${{ secrets.AQI_TOKEN }}
+          CPCB_API_KEY: ${{ secrets.CPCB_API_KEY }}
           CITY: ${{ vars.CITY }}
         run: python fetch_aqi.py
 

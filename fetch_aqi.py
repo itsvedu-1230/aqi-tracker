@@ -1,20 +1,37 @@
 """
 fetch_aqi.py
 ------------
-Pulls today's air quality reading for one city from the WAQI
-(World Air Quality Index) public API, and appends it to a local
-SQLite database (data/aqi.db).
+Pulls real-time air quality data for a city from India's CPCB
+(Central Pollution Control Board) open data API, via data.gov.in.
 
-WAQI is used because it's free, covers Indian cities well (it
-aggregates India's CPCB station data), and needs only a free
-token — no credit card, no approval wait.
+This replaces an earlier version built on WAQI. The switch happened
+because WAQI's single station for Bareilly (Rajendra Nagar) had gone
+stale -- its last actual sensor reading was ~2 months old, but WAQI
+kept serving that same cached value on every fetch without any error.
+Going straight to CPCB, the actual government source WAQI itself
+aggregates from, avoids that caching layer entirely.
+
+Two things are structurally different from the WAQI version:
+
+1. This queries by CITY NAME (e.g. "Bareilly"), not a single station
+   slug. CPCB typically runs multiple monitoring stations per city, so
+   this fetches ALL of them and stores one row per station per run,
+   rather than picking just one.
+
+2. Each pollutant CPCB returns (PM2.5, PM10, NO2, SO2, CO, OZONE, NH3)
+   is already reported as a 0-500 AQI SUB-INDEX, not a raw
+   concentration in ug/m3 -- so no breakpoint formula needs to be
+   implemented here. Per CPCB's own official methodology, a station's
+   overall AQI is simply the maximum sub-index across its reported
+   pollutants (whichever pollutant is worst determines the number),
+   which is what get computed below.
 
 Run it like:
-    AQI_TOKEN=your_token_here CITY=bareilly python fetch_aqi.py
+    CPCB_API_KEY=your_key_here CITY=Bareilly python fetch_aqi.py
 
 Environment variables:
-    AQI_TOKEN  - your free token from https://aqicn.org/data-platform/token/
-    CITY       - the city slug WAQI expects, e.g. "bareilly", "delhi", "mumbai"
+    CPCB_API_KEY - free key from https://data.gov.in (My Account -> API Keys)
+    CITY         - city name exactly as CPCB lists it, e.g. "Bareilly"
 """
 
 import os
@@ -22,19 +39,21 @@ import sys
 import sqlite3
 import json
 from datetime import datetime, timezone
+from collections import defaultdict
 import urllib.request
+import urllib.parse
 import urllib.error
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "data", "aqi.db")
 
+# This is CPCB's "Real time Air Quality Index from various locations"
+# dataset on data.gov.in -- every resource on that platform has a
+# fixed ID like this, separate from your personal API key.
+RESOURCE_ID = "3b01bcb8-0b14-4abf-b6f2-c1bfd384ba69"
+
 
 def get_env_or_die(name: str) -> str:
-    """Read a required environment variable, or exit with a clear error.
-
-    Failing loudly here (instead of silently using a placeholder) matters:
-    a script that fetches nothing but doesn't complain is far worse than
-    one that stops and tells you exactly what's missing.
-    """
+    """Read a required environment variable, or exit with a clear error."""
     value = os.environ.get(name)
     if not value:
         print(f"ERROR: environment variable {name} is not set.", file=sys.stderr)
@@ -43,115 +62,151 @@ def get_env_or_die(name: str) -> str:
     return value
 
 
-def fetch_reading(city: str, token: str) -> dict:
-    """Call the WAQI API and return the parsed JSON response."""
-    url = f"https://api.waqi.info/feed/{city}/?token={token}"
+def fetch_city_records(city: str, api_key: str) -> list:
+    """Call the CPCB API and return the raw list of pollutant records for this city.
+
+    The API returns one row PER POLLUTANT PER STATION -- e.g. a city
+    with 2 stations each reporting 5 pollutants comes back as 10 flat
+    records, not nested by station. group_by_station() below is what
+    turns that into something usable.
+    """
+    params = urllib.parse.urlencode({
+        "api-key": api_key,
+        "format": "json",
+        "filters[city]": city,
+        "limit": 100,
+    })
+    url = f"https://api.data.gov.in/resource/{RESOURCE_ID}?{params}"
     try:
         with urllib.request.urlopen(url, timeout=15) as response:
             payload = json.loads(response.read().decode("utf-8"))
     except urllib.error.URLError as e:
-        print(f"ERROR: could not reach WAQI API: {e}", file=sys.stderr)
+        print(f"ERROR: could not reach CPCB API: {e}", file=sys.stderr)
         sys.exit(1)
 
     if payload.get("status") != "ok":
-        # WAQI returns status="error" with a message when the city slug
-        # is wrong or the token is invalid/rate-limited.
-        print(f"ERROR: WAQI API returned status={payload.get('status')!r}: "
-              f"{payload.get('data')}", file=sys.stderr)
+        print(f"ERROR: CPCB API returned status={payload.get('status')!r}", file=sys.stderr)
         sys.exit(1)
 
-    return payload["data"]
+    return payload.get("records", [])
+
+
+def group_by_station(records: list) -> dict:
+    """Turn CPCB's flat pollutant-per-row list into one entry per station.
+
+    Each station ends up with every pollutant's sub-index, plus the
+    station's overall AQI (the max sub-index across pollutants, per
+    CPCB's official rule) and which pollutant is driving that number
+    -- the "dominant pollutant".
+
+    Rows with avg_value of "NA" (a pollutant the station doesn't
+    monitor, or a momentary gap) are skipped rather than treated as 0
+    -- a missing reading isn't the same as a good one.
+    """
+    stations = defaultdict(lambda: {"pollutants": {}, "last_update": None,
+                                     "latitude": None, "longitude": None})
+
+    for r in records:
+        station_name = r.get("station")
+        avg_raw = r.get("avg_value")
+        if station_name is None or avg_raw in (None, "NA", ""):
+            continue
+        try:
+            avg_value = float(avg_raw)
+        except ValueError:
+            continue
+
+        entry = stations[station_name]
+        entry["pollutants"][r.get("pollutant_id")] = avg_value
+        entry["last_update"] = r.get("last_update")
+        entry["latitude"] = r.get("latitude")
+        entry["longitude"] = r.get("longitude")
+
+    results = {}
+    for station_name, entry in stations.items():
+        if not entry["pollutants"]:
+            continue
+        dominant_pollutant = max(entry["pollutants"], key=entry["pollutants"].get)
+        aqi = entry["pollutants"][dominant_pollutant]
+        results[station_name] = {
+            "aqi": aqi,
+            "dominant_pollutant": dominant_pollutant,
+            "pollutants": entry["pollutants"],
+            "last_update": entry["last_update"],
+            "latitude": entry["latitude"],
+            "longitude": entry["longitude"],
+        }
+    return results
 
 
 def ensure_schema(conn: sqlite3.Connection) -> None:
     """Create the readings table if this is the first run.
 
-    One row per (city, fetched_at). We store the individual pollutant
-    sub-indices (pm25, pm10, etc.) as separate columns because WAQI's
-    headline "aqi" number is just the worst of these, and later on
-    you may want to know *which* pollutant is driving a bad day.
+    This schema is NOT compatible with the earlier WAQI-based version
+    (that one had no `station` column, since it only ever tracked one
+    station). If you're upgrading from that version, start with a
+    fresh data/aqi.db rather than trying to migrate -- the old data
+    was from a stalled sensor anyway, so there's nothing worth
+    carrying forward.
     """
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS readings (
-            id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            city          TEXT NOT NULL,
-            fetched_at    TEXT NOT NULL,   -- ISO 8601 UTC timestamp
-            station_time  TEXT,            -- timestamp the station itself reports
-            aqi           INTEGER,         -- WAQI's overall AQI (max of sub-indices)
-            pm25          REAL,
-            pm10          REAL,
-            o3            REAL,
-            no2           REAL,
-            so2           REAL,
-            co            REAL,
-            raw_json      TEXT             -- full API response, kept for safety
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            city                TEXT NOT NULL,
+            station             TEXT NOT NULL,
+            fetched_at          TEXT NOT NULL,   -- ISO 8601 UTC timestamp
+            station_time        TEXT,            -- CPCB's own "last_update" for this station
+            aqi                 REAL,
+            dominant_pollutant  TEXT,
+            pollutants_json     TEXT,            -- every pollutant's sub-index, for later digging
+            latitude            TEXT,
+            longitude           TEXT
         )
         """
     )
     conn.commit()
 
 
-def extract_fields(data: dict) -> dict:
-    """Pull out the sub-indices we care about, tolerating missing ones.
-
-    Not every station reports every pollutant, so each lookup defaults
-    to None rather than raising a KeyError.
-    """
-    iaqi = data.get("iaqi", {})
-
-    def sub(key: str):
-        entry = iaqi.get(key)
-        return entry.get("v") if entry else None
-
-    return {
-        "aqi": data.get("aqi"),
-        "station_time": data.get("time", {}).get("s"),
-        "pm25": sub("pm25"),
-        "pm10": sub("pm10"),
-        "o3": sub("o3"),
-        "no2": sub("no2"),
-        "so2": sub("so2"),
-        "co": sub("co"),
-    }
-
-
 def main():
     city = get_env_or_die("CITY")
-    token = get_env_or_die("AQI_TOKEN")
+    api_key = get_env_or_die("CPCB_API_KEY")
 
-    data = fetch_reading(city, token)
-    fields = extract_fields(data)
+    records = fetch_city_records(city, api_key)
+    stations = group_by_station(records)
+
+    if not stations:
+        print(f"WARNING: no usable station data returned for city={city!r}. "
+              "This can happen if every pollutant came back as 'NA' this "
+              "cycle -- not necessarily an error, but worth checking if it "
+              "repeats.")
+        return
 
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     ensure_schema(conn)
 
-    conn.execute(
-        """
-        INSERT INTO readings
-            (city, fetched_at, station_time, aqi, pm25, pm10, o3, no2, so2, co, raw_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            city,
-            datetime.now(timezone.utc).isoformat(),
-            fields["station_time"],
-            fields["aqi"],
-            fields["pm25"],
-            fields["pm10"],
-            fields["o3"],
-            fields["no2"],
-            fields["so2"],
-            fields["co"],
-            json.dumps(data),
-        ),
-    )
+    fetched_at = datetime.now(timezone.utc).isoformat()
+
+    for station_name, data in stations.items():
+        conn.execute(
+            """
+            INSERT INTO readings
+                (city, station, fetched_at, station_time, aqi,
+                 dominant_pollutant, pollutants_json, latitude, longitude)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                city, station_name, fetched_at, data["last_update"],
+                data["aqi"], data["dominant_pollutant"],
+                json.dumps(data["pollutants"]), data["latitude"], data["longitude"],
+            ),
+        )
+        print(f"Saved reading for {station_name}: AQI={data['aqi']} "
+              f"(dominant: {data['dominant_pollutant']})")
+
     conn.commit()
     conn.close()
-
-    print(f"Saved reading for {city}: AQI={fields['aqi']} "
-          f"(pm2.5={fields['pm25']}, pm10={fields['pm10']})")
 
 
 if __name__ == "__main__":

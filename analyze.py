@@ -1,23 +1,24 @@
 """
 analyze.py
 ----------
-Reads every stored reading for a city out of data/aqi.db, and computes:
+Reads every stored reading out of data/aqi.db and computes, SEPARATELY
+FOR EACH STATION in the city (Bareilly currently has two: Rajendra
+Nagar and Civil Lines):
 
-  - a true daily average AQI, by grouping all of that day's intraday
-    samples together (the workflow now fetches every 3 hours, so a
-    day is no longer just one snapshot)
-  - a 7-day rolling average over those daily averages (smooths out
-    day-to-day noise)
-  - week-over-week percent change (is this week better or worse than
-    last?)
-  - a z-score anomaly flag (is *today* unusually far from the recent
-    normal?)
-  - a plain-English one-line summary of the above
+  - a true daily average AQI, by grouping that station's intraday
+    samples together (converted to Asia/Kolkata local time first, so
+    "today" means today in India, not in UTC)
+  - a 7-day rolling average over those daily averages
+  - week-over-week percent change
+  - a z-score anomaly flag (is *today* unusually far from that
+    station's own recent normal?)
+  - a plain-English one-line summary
 
-Writes the result to data/summary.json, which generate_dashboard.py
-then reads. Splitting "compute the numbers" (this file) from "draw the
-page" (generate_dashboard.py) is deliberate: it means you can swap the
-dashboard's look later without touching the analysis logic at all.
+Writes the result to data/summary.json as one entry per station, which
+generate_dashboard.py then reads to render a separate section for
+each. Keeping "compute the numbers" (this file) separate from "draw
+the page" (generate_dashboard.py) means the look can change later
+without touching this logic at all.
 """
 
 import os
@@ -30,13 +31,14 @@ from zoneinfo import ZoneInfo
 DB_PATH = os.path.join(os.path.dirname(__file__), "data", "aqi.db")
 SUMMARY_PATH = os.path.join(os.path.dirname(__file__), "data", "summary.json")
 
-# "Today" should mean today in the city being tracked, not in UTC —
-# otherwise a sample taken at 11pm IST would get grouped into
-# tomorrow's UTC date, which would be a confusing bug to explain.
+# "Today" should mean today in the city being tracked, not in UTC --
+# otherwise a sample taken late at night IST could get grouped into
+# the wrong calendar day.
 LOCAL_TZ = ZoneInfo("Asia/Kolkata")
 
-# WAQI's standard AQI breakpoints, used to label a number as more than
-# just a number.
+# CPCB's own AQI categories -- same bands India's National AQI uses,
+# which is also what the dominant-pollutant sub-index values from
+# fetch_aqi.py are already expressed on.
 AQI_BANDS = [
     (0, 50, "Good", "#3E7C6F"),
     (51, 100, "Satisfactory", "#8FA85E"),
@@ -55,22 +57,31 @@ def band_for(aqi: float):
     return "Unknown", "#888888"
 
 
-def load_readings(city: str):
-    """Every raw intraday sample for this city, oldest first."""
+def list_stations(city: str):
+    """Every distinct station name stored for this city, in a stable order."""
     if not os.path.exists(DB_PATH):
-        print("No database found yet — run fetch_aqi.py at least once first.")
         return []
+    conn = sqlite3.connect(DB_PATH)
+    rows = conn.execute(
+        "SELECT DISTINCT station FROM readings WHERE city = ? ORDER BY station",
+        (city,),
+    ).fetchall()
+    conn.close()
+    return [r[0] for r in rows]
 
+
+def load_readings(city: str, station: str):
+    """Every raw intraday sample for this specific station, oldest first."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     rows = conn.execute(
         """
-        SELECT fetched_at, aqi, pm25, pm10
+        SELECT fetched_at, aqi, dominant_pollutant
         FROM readings
-        WHERE city = ?
+        WHERE city = ? AND station = ?
         ORDER BY fetched_at ASC
         """,
-        (city,),
+        (city, station),
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
@@ -79,15 +90,8 @@ def load_readings(city: str):
 def group_into_daily_averages(readings):
     """Collapse raw intraday samples into one average-AQI-per-day series.
 
-    Each reading's UTC timestamp is converted to Asia/Kolkata before
-    taking its calendar date, so a run at 11:30pm IST (which is
-    18:00 UTC, still "today" in UTC too in this case, but the
-    conversion matters generally) always lands on the correct local day.
-
-    Returns two parallel lists, oldest day first:
-        dates       -- ISO date strings, e.g. "2026-08-12"
-        daily_avg   -- mean AQI of that day's samples, rounded to 1dp
-    plus a dict mapping date -> number of samples that day, so the
+    Returns two parallel lists, oldest day first (dates, daily
+    averages), plus a dict mapping date -> sample count, so the
     dashboard can show "based on N readings" and flag partial days.
     """
     by_date = {}
@@ -105,12 +109,8 @@ def group_into_daily_averages(readings):
 
 
 def rolling_average(values, window):
-    """Simple trailing rolling average, one output per input point.
-
-    For the first `window - 1` points there isn't enough history yet,
-    so we average over whatever's available rather than returning None —
-    a chart with gaps at the start looks broken; this doesn't.
-    """
+    """Trailing rolling average; averages over whatever's available for
+    the first `window - 1` points rather than leaving gaps."""
     out = []
     for i in range(len(values)):
         start = max(0, i - window + 1)
@@ -133,40 +133,30 @@ def week_over_week(values):
 
 
 def anomaly_flag(values):
-    """Is today's daily average a statistical outlier vs. recent history?
-
-    We use a z-score: how many standard deviations today's daily
-    average sits from the mean of the last 14 days (excluding today
-    itself). A |z| > 2 is a common, simple threshold for "worth
-    flagging" without being so sensitive it cries wolf on ordinary
-    noise.
-    """
+    """Is today's daily average a statistical outlier vs. this station's
+    own recent history? z-score against the last 14 daily averages."""
     if len(values) < 8:
         return None, None
-
     history = values[-15:-1] if len(values) >= 15 else values[:-1]
     if len(history) < 5:
         return None, None
-
     mean = statistics.mean(history)
     stdev = statistics.pstdev(history)
     today = values[-1]
-
     if stdev == 0:
         return 0.0, False
-
     z = round((today - mean) / stdev, 2)
     return z, abs(z) > 2
 
 
-def build_summary(city: str):
-    readings = load_readings(city)
+def build_station_summary(city: str, station: str):
+    readings = load_readings(city, station)
     if not readings:
-        return {"city": city, "has_data": False}
+        return None
 
     dates, daily_avg, sample_counts = group_into_daily_averages(readings)
     if not dates:
-        return {"city": city, "has_data": False}
+        return None
 
     rolling = rolling_average(daily_avg, window=7)
     wow_change = week_over_week(daily_avg)
@@ -177,39 +167,28 @@ def build_summary(city: str):
     samples_today = sample_counts[latest_date]
     label, color = band_for(latest_avg)
 
-    # The single most recent raw sample, separate from the daily
-    # average above. `readings` is sorted oldest-first, so the last
-    # entry is the latest instantaneous reading — useful to show
-    # alongside the average since the average can lag a sudden spike
-    # or dip by several hours.
     latest_reading = readings[-1]
     latest_instant_aqi = latest_reading["aqi"]
+    latest_dominant = latest_reading["dominant_pollutant"]
     instant_label, instant_color = band_for(latest_instant_aqi)
     instant_local_dt = datetime.fromisoformat(latest_reading["fetched_at"]).astimezone(LOCAL_TZ)
-    # Built manually rather than with "%-I" — that flag strips the
-    # leading zero from the hour on Linux/Mac but isn't supported on
-    # Windows' strftime, and this script needs to run on both.
+    # Built manually rather than with "%-I" -- that strips the leading
+    # zero on Linux/Mac but isn't supported by Windows' strftime, and
+    # this needs to run on both.
     hour_12 = instant_local_dt.hour % 12 or 12
     am_pm = "AM" if instant_local_dt.hour < 12 else "PM"
     latest_instant_time = f"{hour_12}:{instant_local_dt.minute:02d} {am_pm}"
 
-    # Is "today" (in Asia/Kolkata) still in progress, or is this a
-    # fully-elapsed day? Lets the dashboard say "so far" honestly
-    # instead of implying the average is final while the day is
-    # still collecting samples.
     today_local = datetime.now(timezone.utc).astimezone(LOCAL_TZ).date().isoformat()
     is_partial_day = latest_date == today_local
 
-    # Plain-English summary, built from simple rules (no external AI
-    # call needed, so this works offline and with zero extra cost —
-    # you can always swap this function for an LLM-generated version
-    # later as a polish step).
     day_phrase = "so far today" if is_partial_day else f"on {latest_date}"
-    lines = [f"Average AQI in {city.title()} {day_phrase} is {latest_avg} "
+    lines = [f"Average AQI at {station} {day_phrase} is {latest_avg} "
              f"({label}), based on {samples_today} reading"
              f"{'s' if samples_today != 1 else ''}. "
-             f"The most recent single reading, at {latest_instant_time}, "
-             f"was {latest_instant_aqi} ({instant_label})."]
+             f"The most recent reading, at {latest_instant_time}, was "
+             f"{latest_instant_aqi} ({instant_label}), driven mainly by "
+             f"{latest_dominant}."]
     if wow_change is not None:
         direction = "worse" if wow_change > 0 else "better"
         lines.append(f"That's {abs(wow_change)}% {direction} than last week.")
@@ -219,13 +198,12 @@ def build_summary(city: str):
                       f"(z={z}) — worth a closer look.")
 
     return {
-        "city": city,
-        "has_data": True,
+        "station": station,
         "latest_instant_aqi": latest_instant_aqi,
         "latest_instant_band": instant_label,
         "latest_instant_color": instant_color,
         "latest_instant_time": latest_instant_time,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "latest_dominant_pollutant": latest_dominant,
         "dates": dates,
         "daily_avg_aqi": daily_avg,
         "rolling_7d": rolling,
@@ -242,15 +220,39 @@ def build_summary(city: str):
     }
 
 
+def build_summary(city: str):
+    stations = list_stations(city)
+    if not stations:
+        return {"city": city, "has_data": False}
+
+    station_summaries = {}
+    for station in stations:
+        summary = build_station_summary(city, station)
+        if summary is not None:
+            station_summaries[station] = summary
+
+    if not station_summaries:
+        return {"city": city, "has_data": False}
+
+    return {
+        "city": city,
+        "has_data": True,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "stations": station_summaries,
+    }
+
+
 def main():
-    city = os.environ.get("CITY", "bareilly")
+    city = os.environ.get("CITY", "Bareilly")
     summary = build_summary(city)
     os.makedirs(os.path.dirname(SUMMARY_PATH), exist_ok=True)
     with open(SUMMARY_PATH, "w") as f:
         json.dump(summary, f, indent=2)
     print(f"Wrote summary to {SUMMARY_PATH}")
     if summary.get("has_data"):
-        print(summary["summary_text"])
+        for station, s in summary["stations"].items():
+            print(f"\n{station}:")
+            print(f"  {s['summary_text']}")
 
 
 if __name__ == "__main__":
