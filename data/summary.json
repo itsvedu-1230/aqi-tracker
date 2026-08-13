@@ -4,8 +4,8 @@
   "latest_instant_aqi": 63,
   "latest_instant_band": "Satisfactory",
   "latest_instant_color": "#8FA85E",
-  "latest_instant_time": "2:54 AM",
-  "generated_at": "2026-08-12T21:24:37.554169+00:00",
+  "latest_instant_time": "7:35 AM",
+  "generated_at": "2026-08-13T02:05:14.074815+00:00",
   "dates": [
     "2026-08-09",
     "2026-08-11",
@@ -28,10 +28,10 @@
   "latest_avg_aqi": 63.0,
   "latest_band": "Satisfactory",
   "latest_color": "#8FA85E",
-  "samples_today": 2,
+  "samples_today": 3,
   "is_partial_day": true,
   "week_over_week_pct": null,
   "anomaly_zscore": null,
   "is_anomaly": null,
-  "summary_text": "Average AQI in Bareilly so far today is 63.0 (Satisfactory), based on 2 readings. The most recent single reading, at 2:54 AM, was 63 (Satisfactory)."
+  "summary_text": "Average AQI in Bareilly so far today is 63.0 (Satisfactory), based on 3 readings. The most recent single reading, at 7:35 AM, was 63 (Satisfactory)."
 }
