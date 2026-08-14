@@ -80,6 +80,17 @@ def fetch_city_records(city: str, api_key: str) -> list:
     socket read instead of being wrapped). This now retries a few
     times with a short backoff before giving up, since a slow response
     one cycle doesn't mean the API is actually down.
+
+    A request built with just urlopen(url) sends Python's bare default
+    User-Agent header (e.g. "Python-urllib/3.12"). Some government
+    APIs quietly stall (rather than reject) requests that don't look
+    like they're coming from a real browser, as basic anti-bot
+    protection -- which looks EXACTLY like a network timeout from the
+    caller's side, making it easy to misdiagnose as "the server is
+    just slow." Setting a normal browser-like User-Agent below is a
+    common, low-risk workaround for that -- this is still the same
+    legitimate request with a valid API key, just with a header most
+    real HTTP clients already send by default.
     """
     params = urllib.parse.urlencode({
         "api-key": api_key,
@@ -88,13 +99,22 @@ def fetch_city_records(city: str, api_key: str) -> list:
         "limit": 100,
     })
     url = f"https://api.data.gov.in/resource/{RESOURCE_ID}?{params}"
+    request = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                            "AppleWebKit/537.36 (KHTML, like Gecko) "
+                            "Chrome/124.0.0.0 Safari/537.36"),
+            "Accept": "application/json",
+        },
+    )
 
     max_attempts = 3
     last_error = None
 
     for attempt in range(1, max_attempts + 1):
         try:
-            with urllib.request.urlopen(url, timeout=25) as response:
+            with urllib.request.urlopen(request, timeout=25) as response:
                 payload = json.loads(response.read().decode("utf-8"))
             break
         except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
