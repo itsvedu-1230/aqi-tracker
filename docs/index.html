@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bareilly Air Quality Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root {
@@ -12,10 +15,6 @@
     --surface-2: #2B363D;
     --text: #EDE6D8;
     --text-muted: #8B9498;
-    --good: #4E9A85;
-    --warn: #D9A441;
-    --bad: #C0432E;
-    --accent: #8FA85E;
   }
   * { box-sizing: border-box; }
   body {
@@ -23,242 +22,414 @@
     background: linear-gradient(180deg, #1B2226 0%, #20292E 100%);
     color: var(--text);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    padding: 2.5rem 1.25rem 4rem;
+    padding: 0 1.25rem 4rem;
   }
-  .wrap { max-width: 880px; margin: 0 auto; }
+  .top-accent {
+    height: 4px;
+    background: linear-gradient(90deg, #3E7C6F 0%, #8FA85E 20%, #D9A441 45%, #D9722C 65%, #C0432E 85%, #7A2E3A 100%);
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding-top: 2.25rem; }
+  .header-row { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.5rem; }
+  .eyebrow-row { display: flex; align-items: center; gap: 0.5rem; }
   .eyebrow {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.8rem;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--text-muted);
-    margin-bottom: 0.5rem;
+  }
+  .live-badge {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    color: #8FA85E;
+    background: rgba(143,168,94,0.12);
+    border: 1px solid rgba(143,168,94,0.3);
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+  }
+  .live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #8FA85E;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
   }
   h1 {
     font-size: clamp(1.8rem, 4vw, 2.6rem);
     font-weight: 800;
-    margin: 0 0 2rem;
+    margin: 0.3rem 0 0.4rem;
     letter-spacing: -0.02em;
   }
-  .hero {
+  .station-count-note {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 2.25rem;
+  }
+  .section-heading {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin: 0 0 0.3rem;
+  }
+  .section-subtext {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    margin: 0 0 1.25rem;
+  }
+  .comparison-section { margin-top: 2.75rem; margin-bottom: 2.75rem; }
+  .comparison-card {
     background: var(--surface);
     border-radius: 18px;
-    padding: 2.25rem;
-    margin-bottom: 1.5rem;
+    padding: 1.75rem;
     border: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 1rem;
+  }
+  .comparison-pair-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+  }
+  .stations-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 1.5rem;
+  }
+  .station-panel {
+    background: var(--surface);
+    border-radius: 18px;
+    padding: 1.5rem;
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .station-panel:hover {
+    box-shadow: 0 8px 28px rgba(0,0,0,0.28);
+    border-color: rgba(255,255,255,0.12);
+  }
+  .station-panel-header { display: flex; align-items: center; gap: 0.55rem; margin-bottom: 1rem; }
+  .station-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .station-name { font-size: 1.05rem; font-weight: 700; margin: 0; }
+  .hero {
+    background: var(--surface-2);
+    border-radius: 14px;
+    padding: 1.5rem;
+    margin-bottom: 1.1rem;
   }
   .hero-label {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-muted);
-    margin-bottom: 0.6rem;
+    margin-bottom: 0.5rem;
   }
-  .hero-top { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+  .hero-top { display: flex; align-items: baseline; gap: 0.85rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
   .aqi-number {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 4.5rem;
+    font-size: 3.4rem;
     font-weight: 700;
-    color: var(--accent);
     line-height: 1;
   }
-  .aqi-band {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: var(--accent);
-  }
+  .aqi-band { font-size: 1.05rem; font-weight: 600; }
   .current-reading {
     display: flex;
     align-items: baseline;
-    gap: 0.6rem;
-    padding: 0.9rem 1.1rem;
-    background: var(--surface-2);
-    border-radius: 12px;
-    margin-left: auto;
+    gap: 0.55rem;
+    padding: 0.7rem 0.9rem;
+    background: rgba(0,0,0,0.18);
+    border-radius: 10px;
   }
   .current-reading-number {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 1.8rem;
+    font-size: 1.4rem;
     font-weight: 700;
   }
-  .current-reading-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 0.1rem;
-  }
+  .current-reading-meta { display: flex; flex-direction: column; gap: 0.05rem; }
   .current-reading-label {
-    font-size: 0.7rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase;
     color: var(--text-muted);
   }
   .current-reading-time {
-    font-size: 0.75rem;
-    color: var(--text-muted);
+    font-size: 0.72rem; color: var(--text-muted);
     font-family: 'IBM Plex Mono', monospace;
   }
-  .samples-note {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    margin-top: 0.3rem;
-  }
-  .summary-text { color: var(--text-muted); margin-top: 0.75rem; font-size: 1rem; line-height: 1.5; }
-
-  /* Signature element: a "visibility bar" -- instead of a generic
-     circular gauge, this reads left-to-right like a scale of how far
-     you could see, from clear air to thick haze, with a marker
-     showing where today sits. */
+  .samples-note { font-size: 0.76rem; color: var(--text-muted); margin-top: 0.7rem; }
   .visibility-bar {
     position: relative;
-    margin-top: 1.75rem;
-    height: 14px;
+    margin-top: 1rem;
+    height: 10px;
     border-radius: 999px;
     background: linear-gradient(90deg,
       #3E7C6F 0%, #8FA85E 16%, #D9A441 33%, #D9722C 50%, #C0432E 75%, #7A2E3A 100%);
   }
   .visibility-marker {
     position: absolute;
-    top: -7px;
+    top: -5px;
     width: 3px;
-    height: 28px;
+    height: 20px;
     background: var(--text);
-    left: 15.75%;
     transform: translateX(-50%);
-    box-shadow: 0 0 8px rgba(237,230,216,0.6);
+    box-shadow: 0 0 6px rgba(237,230,216,0.6);
   }
-  .visibility-labels {
-    display: flex; justify-content: space-between;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.7rem; color: var(--text-muted);
-    margin-top: 0.5rem;
-  }
-
   .anomaly-badge {
-    margin-top: 1.25rem;
+    margin-top: 1rem;
     display: inline-block;
     background: rgba(192,67,46,0.15);
     color: #E08A78;
     border: 1px solid rgba(192,67,46,0.4);
-    padding: 0.4rem 0.8rem;
+    padding: 0.3rem 0.65rem;
     border-radius: 8px;
-    font-size: 0.85rem;
+    font-size: 0.76rem;
   }
-
-  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem; margin-bottom: 1.1rem; }
   .stat-card {
-    background: var(--surface);
-    border-radius: 14px;
-    padding: 1.25rem;
-    border: 1px solid rgba(255,255,255,0.06);
+    background: var(--surface-2);
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
   }
-  .stat-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.4rem; }
-  .stat-value { font-family: 'IBM Plex Mono', monospace; font-size: 1.6rem; font-weight: 700; }
-  .stat-sub { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem; }
-
+  .stat-label { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.3rem; }
+  .stat-value { font-family: 'IBM Plex Mono', monospace; font-size: 1.3rem; font-weight: 700; }
+  .stat-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem; }
   .chart-card {
-    background: var(--surface);
-    border-radius: 18px;
-    padding: 1.75rem;
-    border: 1px solid rgba(255,255,255,0.06);
+    background: var(--surface-2);
+    border-radius: 14px;
+    padding: 1.1rem;
+    margin-bottom: 0.9rem;
   }
-  .chart-title { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem; }
-
+  .chart-title { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+  .summary-text-block { color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; }
   footer {
-    margin-top: 2rem;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255,255,255,0.06);
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.75rem;
     color: var(--text-muted);
     text-align: center;
   }
+  footer .made-with { margin-top: 0.4rem; opacity: 0.7; }
 </style>
 </head>
 <body>
+<div class="top-accent"></div>
 <div class="wrap">
-  <div class="eyebrow">Personal air quality tracker</div>
-  <h1>Bareilly Air Quality</h1>
+  <div class="header-row">
+    <div>
+      <div class="eyebrow-row">
+        <span class="eyebrow">Personal air quality tracker</span>
+      </div>
+      <h1>Bareilly Air Quality</h1>
+    </div>
+    <div class="live-badge"><span class="live-dot"></span>Auto-updates every 3 hours</div>
+  </div>
+  <div class="station-count-note">Tracking 2 CPCB monitoring stations independently — each has its own sensor and can read differently.</div>
 
-  <div class="hero">
-    <div class="hero-label">Today's average (so far)</div>
-    <div class="hero-top">
-      <div class="aqi-number">63.0</div>
-      <div class="aqi-band">Satisfactory</div>
-      <div class="current-reading">
-        <div class="current-reading-number" style="color:#8FA85E">63</div>
-        <div class="current-reading-meta">
-          <div class="current-reading-label">Current &middot; Satisfactory</div>
-          <div class="current-reading-time">as of 3:38 PM IST</div>
+  <section>
+    <h2 class="section-heading">By Station</h2>
+    <p class="section-subtext">Each station's own current reading, daily average, and trend.</p>
+    <div class="stations-grid">
+      
+    <div class="station-panel">
+      <div class="station-panel-header">
+        <span class="station-dot" style="background:#4E9A85"></span>
+        <h2 class="station-name">Civil Lines</h2>
+      </div>
+
+      <div class="hero">
+        <div class="hero-label">Today's average (so far)</div>
+        <div class="hero-top">
+          <div class="aqi-number" style="color:#8FA85E">70.0</div>
+          <div class="aqi-band" style="color:#8FA85E">Satisfactory</div>
+        </div>
+        <div class="current-reading">
+          <div class="current-reading-number" style="color:#8FA85E">70.0</div>
+          <div class="current-reading-meta">
+            <div class="current-reading-label">Current &middot; Satisfactory</div>
+            <div class="current-reading-time">3:05 PM IST &middot; SO2</div>
+          </div>
+        </div>
+        <div class="samples-note">Based on 1 reading so far today</div>
+        <div class="visibility-bar"><div class="visibility-marker" style="left:17.5%"></div></div>
+        
+      </div>
+
+      <div class="stats-row">
+        
+        <div class="stat-card">
+          <div class="stat-label">Days tracked</div>
+          <div class="stat-value">1</div>
         </div>
       </div>
-    </div>
-    <div class="samples-note">Based on 6 readings so far today</div>
-    <div class="summary-text">Average AQI in Bareilly so far today is 63.0 (Satisfactory), based on 6 readings. The most recent single reading, at 3:38 PM, was 63 (Satisfactory).</div>
-    <div class="visibility-bar"><div class="visibility-marker"></div></div>
-    <div class="visibility-labels"><span>Good</span><span>Moderate</span><span>Poor</span><span>Severe</span></div>
-    
-  </div>
 
-  <div class="stats-row">
-    <div class="stat-card">
-      <div class="stat-label">Current AQI band</div>
-      <div class="stat-value" style="color:#8FA85E">Satisfactory</div>
-    </div>
-    
-    <div class="stat-card">
-      <div class="stat-label">Days tracked</div>
-      <div class="stat-value">4</div>
-      <div class="stat-sub">days of history</div>
-    </div>
-  </div>
+      <div class="chart-card">
+        <div class="chart-title">Daily average (7-day rolling average overlaid)</div>
+        <canvas id="chart-civil-lines-bareilly-uppcb" height="100"></canvas>
+      </div>
 
-  <div class="chart-card">
-    <div class="chart-title">Daily average AQI over time (with 7-day rolling average)</div>
-    <canvas id="aqiChart" height="110"></canvas>
-  </div>
+      <div class="summary-text-block">Average AQI at Civil Lines, Bareilly - UPPCB so far today is 70.0 (Satisfactory), based on 1 reading. The most recent reading, at 3:05 PM, was 70.0 (Satisfactory), driven mainly by SO2.</div>
+    </div>
+
+    <div class="station-panel">
+      <div class="station-panel-header">
+        <span class="station-dot" style="background:#D9A441"></span>
+        <h2 class="station-name">Rajendra Nagar</h2>
+      </div>
+
+      <div class="hero">
+        <div class="hero-label">Today's average (so far)</div>
+        <div class="hero-top">
+          <div class="aqi-number" style="color:#8FA85E">69.0</div>
+          <div class="aqi-band" style="color:#8FA85E">Satisfactory</div>
+        </div>
+        <div class="current-reading">
+          <div class="current-reading-number" style="color:#8FA85E">69.0</div>
+          <div class="current-reading-meta">
+            <div class="current-reading-label">Current &middot; Satisfactory</div>
+            <div class="current-reading-time">3:05 PM IST &middot; PM10</div>
+          </div>
+        </div>
+        <div class="samples-note">Based on 1 reading so far today</div>
+        <div class="visibility-bar"><div class="visibility-marker" style="left:17.25%"></div></div>
+        
+      </div>
+
+      <div class="stats-row">
+        
+        <div class="stat-card">
+          <div class="stat-label">Days tracked</div>
+          <div class="stat-value">1</div>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title">Daily average (7-day rolling average overlaid)</div>
+        <canvas id="chart-rajendra-nagar-bareilly-uppcb" height="100"></canvas>
+      </div>
+
+      <div class="summary-text-block">Average AQI at Rajendra Nagar, Bareilly - UPPCB so far today is 69.0 (Satisfactory), based on 1 reading. The most recent reading, at 3:05 PM, was 69.0 (Satisfactory), driven mainly by PM10.</div>
+    </div>
+
+    </div>
+  </section>
+
+  
+  <section class="comparison-section">
+    <h2 class="section-heading">Station Comparison</h2>
+    <p class="section-subtext">How closely the two stations track each other, and where they currently disagree.</p>
+    
+    <div class="comparison-card">
+      <div class="comparison-pair-label">Civil Lines &nbsp;vs&nbsp; Rajendra Nagar</div>
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">Correlation</div>
+          <div class="stat-sub">Not enough overlapping days yet (1 so far, need 3+) to compute a correlation.</div>
+        </div>
+        
+            <div class="stat-card">
+              <div class="stat-label">Civil Lines avg</div>
+              <div class="stat-value">70.0</div>
+              <div class="stat-sub">over shared history</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Rajendra Nagar avg</div>
+              <div class="stat-value">69.0</div>
+              <div class="stat-sub">over shared history</div>
+            </div>
+        
+            <div class="stat-card">
+              <div class="stat-label">Currently worse</div>
+              <div class="stat-value" style="font-size:1.1rem;">Civil Lines</div>
+              <div class="stat-sub">by 1.0 AQI points right now</div>
+            </div>
+        
+            <div class="stat-card">
+              <div class="stat-label">Generally cleaner</div>
+              <div class="stat-value" style="font-size:1.1rem;">Rajendra Nagar</div>
+              <div class="stat-sub">by 1.0 AQI avg, over 1 shared days</div>
+            </div>
+      </div>
+      
+            <div class="chart-card">
+              <div class="chart-title">Daily average AQI, both stations overlaid</div>
+              <canvas id="comparison-chart-0" height="100"></canvas>
+            </div>
+    </div>
+  </section>
+
 
   <footer>
-    Source: WAQI (World Air Quality Index) &middot; Last updated 2026-08-13T10:08:14.194090+00:00 UTC
+    Source: CPCB (Central Pollution Control Board), via data.gov.in &middot; Last updated 2026-08-14T09:35:46.540922+00:00 UTC
+    <div class="made-with">Built with Python, GitHub Actions &amp; Chart.js</div>
   </footer>
 </div>
 
 <script>
-  const ctx = document.getElementById('aqiChart').getContext('2d');
-  new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: ["2026-08-09", "2026-08-11", "2026-08-12", "2026-08-13"].map(d => d.slice(5, 10)),
-      datasets: [
-        {
-          label: 'Daily average AQI',
-          data: [63.0, 63.0, 63.0, 63.0],
-          borderColor: '#8B9498',
-          backgroundColor: 'transparent',
-          pointRadius: 0,
-          borderWidth: 1,
-          tension: 0.2,
+
+      new Chart(document.getElementById('chart-civil-lines-bareilly-uppcb').getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: ["2026-08-14"].map(d => d.slice(5, 10)),
+          datasets: [
+            { label: 'Daily average', data: [70.0], borderColor: '#8B9498',
+               backgroundColor: 'transparent', pointRadius: 0, borderWidth: 1, tension: 0.2 },
+            { label: '7-day average', data: [70.0], borderColor: '#4E9A85',
+               backgroundColor: 'transparent', pointRadius: 0, borderWidth: 2.5, tension: 0.3 },
+          ]
         },
-        {
-          label: '7-day average',
-          data: [63.0, 63.0, 63.0, 63.0],
-          borderColor: '#8FA85E',
-          backgroundColor: 'transparent',
-          pointRadius: 0,
-          borderWidth: 2.5,
-          tension: 0.3,
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: '#8B9498', font: { family: 'IBM Plex Mono', size: 10 } } } },
+          scales: {
+            x: { ticks: { color: '#8B9498', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+            y: { ticks: { color: '#8B9498', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' } }
+          }
+        }
+      });
+
+      new Chart(document.getElementById('chart-rajendra-nagar-bareilly-uppcb').getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: ["2026-08-14"].map(d => d.slice(5, 10)),
+          datasets: [
+            { label: 'Daily average', data: [69.0], borderColor: '#8B9498',
+               backgroundColor: 'transparent', pointRadius: 0, borderWidth: 1, tension: 0.2 },
+            { label: '7-day average', data: [69.0], borderColor: '#D9A441',
+               backgroundColor: 'transparent', pointRadius: 0, borderWidth: 2.5, tension: 0.3 },
+          ]
         },
-      ]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { labels: { color: '#8B9498', font: { family: 'IBM Plex Mono' } } }
-      },
-      scales: {
-        x: { ticks: { color: '#8B9498' }, grid: { color: 'rgba(255,255,255,0.04)' } },
-        y: { ticks: { color: '#8B9498' }, grid: { color: 'rgba(255,255,255,0.06)' } }
-      }
-    }
-  });
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: '#8B9498', font: { family: 'IBM Plex Mono', size: 10 } } } },
+          scales: {
+            x: { ticks: { color: '#8B9498', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+            y: { ticks: { color: '#8B9498', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' } }
+          }
+        }
+      });
+
+      new Chart(document.getElementById('comparison-chart-0').getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: ["2026-08-14"].map(d => d.slice(5, 10)),
+          datasets: [
+            { label: 'Civil Lines', data: [70.0], borderColor: '#4E9A85',
+               backgroundColor: 'transparent', pointRadius: 2, borderWidth: 2, tension: 0.25 },
+            { label: 'Rajendra Nagar', data: [69.0], borderColor: '#D9A441',
+               backgroundColor: 'transparent', pointRadius: 2, borderWidth: 2, tension: 0.25 },
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: '#8B9498', font: { family: 'IBM Plex Mono', size: 11 } } } },
+          scales: {
+            x: { ticks: { color: '#8B9498' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+            y: { ticks: { color: '#8B9498' }, grid: { color: 'rgba(255,255,255,0.06)' } }
+          }
+        }
+      });
+
 </script>
 </body>
 </html>
