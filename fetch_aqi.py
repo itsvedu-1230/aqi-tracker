@@ -38,6 +38,7 @@ import os
 import sys
 import sqlite3
 import json
+import time
 from datetime import datetime, timezone
 from collections import defaultdict
 import urllib.request
@@ -69,6 +70,16 @@ def fetch_city_records(city: str, api_key: str) -> list:
     with 2 stations each reporting 5 pollutants comes back as 10 flat
     records, not nested by station. group_by_station() below is what
     turns that into something usable.
+
+    data.gov.in's API is a government service and noticeably slower /
+    flakier than something like WAQI -- it's common for a request to
+    simply time out under load rather than return an error response.
+    A single timeout used to crash the whole run (caught only
+    urllib.error.URLError, which doesn't cover every timeout path --
+    a bare TimeoutError can surface directly from the underlying
+    socket read instead of being wrapped). This now retries a few
+    times with a short backoff before giving up, since a slow response
+    one cycle doesn't mean the API is actually down.
     """
     params = urllib.parse.urlencode({
         "api-key": api_key,
@@ -77,11 +88,31 @@ def fetch_city_records(city: str, api_key: str) -> list:
         "limit": 100,
     })
     url = f"https://api.data.gov.in/resource/{RESOURCE_ID}?{params}"
-    try:
-        with urllib.request.urlopen(url, timeout=15) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-    except urllib.error.URLError as e:
-        print(f"ERROR: could not reach CPCB API: {e}", file=sys.stderr)
+
+    max_attempts = 3
+    last_error = None
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            with urllib.request.urlopen(url, timeout=25) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+            break
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+            last_error = e
+            if attempt < max_attempts:
+                wait_seconds = 5 * attempt  # 5s, then 10s
+                print(f"WARNING: attempt {attempt}/{max_attempts} failed "
+                      f"({e}). Retrying in {wait_seconds}s...", file=sys.stderr)
+                time.sleep(wait_seconds)
+            else:
+                print(f"ERROR: could not reach CPCB API after "
+                      f"{max_attempts} attempts: {e}", file=sys.stderr)
+                sys.exit(1)
+    else:
+        # Shouldn't be reachable (the loop above always either breaks
+        # or exits), but guards against silently falling through with
+        # no payload if that ever changes.
+        print(f"ERROR: could not reach CPCB API: {last_error}", file=sys.stderr)
         sys.exit(1)
 
     if payload.get("status") != "ok":
