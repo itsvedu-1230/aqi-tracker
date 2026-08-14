@@ -240,18 +240,18 @@
       <div class="hero">
         <div class="hero-label">Today's average (so far)</div>
         <div class="hero-top">
-          <div class="aqi-number" style="color:#8FA85E">66.0</div>
+          <div class="aqi-number" style="color:#8FA85E">64.0</div>
           <div class="aqi-band" style="color:#8FA85E">Satisfactory</div>
         </div>
         <div class="current-reading">
-          <div class="current-reading-number" style="color:#8FA85E">61.0</div>
+          <div class="current-reading-number" style="color:#8FA85E">58.0</div>
           <div class="current-reading-meta">
             <div class="current-reading-label">Current &middot; Satisfactory</div>
-            <div class="current-reading-time">6:39 PM IST &middot; SO2</div>
+            <div class="current-reading-time">9:23 PM IST &middot; SO2</div>
           </div>
         </div>
-        <div class="samples-note">Based on 3 readings so far today</div>
-        <div class="visibility-bar"><div class="visibility-marker" style="left:16.5%"></div></div>
+        <div class="samples-note">Based on 4 readings so far today</div>
+        <div class="visibility-bar"><div class="visibility-marker" style="left:16.0%"></div></div>
         
       </div>
 
@@ -268,7 +268,7 @@
         <canvas id="chart-civil-lines-bareilly-uppcb" height="100"></canvas>
       </div>
 
-      <div class="summary-text-block">Average AQI at Civil Lines, Bareilly - UPPCB so far today is 66.0 (Satisfactory), based on 3 readings. The most recent reading, at 6:39 PM, was 61.0 (Satisfactory), driven mainly by SO2.</div>
+      <div class="summary-text-block">Average AQI at Civil Lines, Bareilly - UPPCB so far today is 64.0 (Satisfactory), based on 4 readings. The most recent reading, at 9:23 PM, was 58.0 (Satisfactory), driven mainly by SO2.</div>
     </div>
 
     <div class="station-panel">
@@ -280,18 +280,18 @@
       <div class="hero">
         <div class="hero-label">Today's average (so far)</div>
         <div class="hero-top">
-          <div class="aqi-number" style="color:#8FA85E">68.7</div>
+          <div class="aqi-number" style="color:#8FA85E">67.2</div>
           <div class="aqi-band" style="color:#8FA85E">Satisfactory</div>
         </div>
         <div class="current-reading">
-          <div class="current-reading-number" style="color:#8FA85E">68.0</div>
+          <div class="current-reading-number" style="color:#8FA85E">63.0</div>
           <div class="current-reading-meta">
             <div class="current-reading-label">Current &middot; Satisfactory</div>
-            <div class="current-reading-time">6:39 PM IST &middot; PM10</div>
+            <div class="current-reading-time">9:23 PM IST &middot; PM10</div>
           </div>
         </div>
-        <div class="samples-note">Based on 3 readings so far today</div>
-        <div class="visibility-bar"><div class="visibility-marker" style="left:17.175%"></div></div>
+        <div class="samples-note">Based on 4 readings so far today</div>
+        <div class="visibility-bar"><div class="visibility-marker" style="left:16.8%"></div></div>
         
       </div>
 
@@ -308,7 +308,7 @@
         <canvas id="chart-rajendra-nagar-bareilly-uppcb" height="100"></canvas>
       </div>
 
-      <div class="summary-text-block">Average AQI at Rajendra Nagar, Bareilly - UPPCB so far today is 68.7 (Satisfactory), based on 3 readings. The most recent reading, at 6:39 PM, was 68.0 (Satisfactory), driven mainly by PM10.</div>
+      <div class="summary-text-block">Average AQI at Rajendra Nagar, Bareilly - UPPCB so far today is 67.2 (Satisfactory), based on 4 readings. The most recent reading, at 9:23 PM, was 63.0 (Satisfactory), driven mainly by PM10.</div>
     </div>
 
     </div>
@@ -329,25 +329,25 @@
         
             <div class="stat-card">
               <div class="stat-label">Civil Lines avg</div>
-              <div class="stat-value">66.0</div>
+              <div class="stat-value">64.0</div>
               <div class="stat-sub">over shared history</div>
             </div>
             <div class="stat-card">
               <div class="stat-label">Rajendra Nagar avg</div>
-              <div class="stat-value">68.7</div>
+              <div class="stat-value">67.2</div>
               <div class="stat-sub">over shared history</div>
             </div>
         
             <div class="stat-card">
               <div class="stat-label">Currently worse</div>
               <div class="stat-value" style="font-size:1.1rem;">Rajendra Nagar</div>
-              <div class="stat-sub">by 7.0 AQI points right now</div>
+              <div class="stat-sub">by 5.0 AQI points right now</div>
             </div>
         
             <div class="stat-card">
               <div class="stat-label">Generally cleaner</div>
               <div class="stat-value" style="font-size:1.1rem;">Civil Lines</div>
-              <div class="stat-sub">by 2.7 AQI avg, over 1 shared days</div>
+              <div class="stat-sub">by 3.2 AQI avg, over 1 shared days</div>
             </div>
       </div>
       
@@ -360,7 +360,7 @@
 
 
   <footer>
-    Source: CPCB (Central Pollution Control Board), via data.gov.in &middot; Last updated 2026-08-14T13:09:28.272470+00:00 UTC
+    Source: CPCB (Central Pollution Control Board), via data.gov.in &middot; Last updated 2026-08-14T15:53:27.838312+00:00 UTC
     <div class="made-with">Built with Python, GitHub Actions &amp; Chart.js</div>
   </footer>
 </div>
@@ -372,9 +372,9 @@
         data: {
           labels: ["2026-08-14"].map(d => d.slice(5, 10)),
           datasets: [
-            { label: 'Daily average', data: [66.0], borderColor: '#8B9498',
+            { label: 'Daily average', data: [64.0], borderColor: '#8B9498',
                backgroundColor: 'transparent', pointRadius: 0, borderWidth: 1, tension: 0.2 },
-            { label: '7-day average', data: [66.0], borderColor: '#4E9A85',
+            { label: '7-day average', data: [64.0], borderColor: '#4E9A85',
                backgroundColor: 'transparent', pointRadius: 0, borderWidth: 2.5, tension: 0.3 },
           ]
         },
@@ -393,9 +393,9 @@
         data: {
           labels: ["2026-08-14"].map(d => d.slice(5, 10)),
           datasets: [
-            { label: 'Daily average', data: [68.7], borderColor: '#8B9498',
+            { label: 'Daily average', data: [67.2], borderColor: '#8B9498',
                backgroundColor: 'transparent', pointRadius: 0, borderWidth: 1, tension: 0.2 },
-            { label: '7-day average', data: [68.7], borderColor: '#D9A441',
+            { label: '7-day average', data: [67.2], borderColor: '#D9A441',
                backgroundColor: 'transparent', pointRadius: 0, borderWidth: 2.5, tension: 0.3 },
           ]
         },
@@ -414,9 +414,9 @@
         data: {
           labels: ["2026-08-14"].map(d => d.slice(5, 10)),
           datasets: [
-            { label: 'Civil Lines', data: [66.0], borderColor: '#4E9A85',
+            { label: 'Civil Lines', data: [64.0], borderColor: '#4E9A85',
                backgroundColor: 'transparent', pointRadius: 2, borderWidth: 2, tension: 0.25 },
-            { label: 'Rajendra Nagar', data: [68.7], borderColor: '#D9A441',
+            { label: 'Rajendra Nagar', data: [67.2], borderColor: '#D9A441',
                backgroundColor: 'transparent', pointRadius: 2, borderWidth: 2, tension: 0.25 },
           ]
         },
