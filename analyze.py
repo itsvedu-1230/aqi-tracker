@@ -220,6 +220,103 @@ def build_station_summary(city: str, station: str):
     }
 
 
+def label_correlation(r: float) -> str:
+    """Turn a Pearson correlation coefficient into a plain-English phrase.
+
+    Thresholds (0.7 / 0.4 / 0.2) are the commonly used rough bands for
+    "strong / moderate / weak" correlation strength -- not a precise
+    statistical standard, just a reasonable convention for a summary
+    sentence.
+    """
+    abs_r = abs(r)
+    if abs_r < 0.2:
+        return "not meaningfully correlated"
+    strength = "strongly" if abs_r >= 0.7 else "moderately" if abs_r >= 0.4 else "weakly"
+    direction = "correlated" if r >= 0 else "inversely correlated"
+    return f"{strength} {direction}"
+
+
+def compare_stations(station_summaries: dict) -> list:
+    """For every pair of stations, compute how closely their daily
+    averages track each other, and how far apart their most recent
+    readings currently are.
+
+    Correlation is computed only over dates BOTH stations actually
+    have data for (their intersection) -- comparing on days where one
+    station is missing would silently misalign the two series.
+    Needs at least 3 overlapping days; below that a correlation
+    coefficient is too noisy to mean anything, so it's left as None
+    rather than reported with false confidence.
+    """
+    names = list(station_summaries.keys())
+    comparisons = []
+
+    for i in range(len(names)):
+        for j in range(i + 1, len(names)):
+            name_a, name_b = names[i], names[j]
+            a, b = station_summaries[name_a], station_summaries[name_b]
+
+            a_by_date = dict(zip(a["dates"], a["daily_avg_aqi"]))
+            b_by_date = dict(zip(b["dates"], b["daily_avg_aqi"]))
+            shared_dates = sorted(set(a_by_date) & set(b_by_date))
+
+            correlation = None
+            correlation_label = None
+            a_series = [a_by_date[d] for d in shared_dates]
+            b_series = [b_by_date[d] for d in shared_dates]
+
+            if len(shared_dates) >= 3:
+                try:
+                    correlation = round(statistics.correlation(a_series, b_series), 2)
+                    correlation_label = label_correlation(correlation)
+                except statistics.StatisticsError:
+                    # Happens if one series has zero variance (every
+                    # value identical) -- correlation is undefined,
+                    # not zero, so leave it as None rather than guess.
+                    pass
+
+            current_diff = round(abs(a["latest_instant_aqi"] - b["latest_instant_aqi"]), 1)
+            if a["latest_instant_aqi"] > b["latest_instant_aqi"]:
+                currently_worse = name_a
+            elif b["latest_instant_aqi"] > a["latest_instant_aqi"]:
+                currently_worse = name_b
+            else:
+                currently_worse = None
+
+            # Beyond the single current-moment snapshot above, look at
+            # the whole shared history: each station's own average
+            # over those days, and which one tends to run cleaner
+            # overall rather than just right now.
+            station_a_mean = round(statistics.mean(a_series), 1) if a_series else None
+            station_b_mean = round(statistics.mean(b_series), 1) if b_series else None
+            avg_gap_history = None
+            generally_cleaner = None
+            if station_a_mean is not None and station_b_mean is not None:
+                avg_gap_history = round(abs(station_a_mean - station_b_mean), 1)
+                if station_a_mean < station_b_mean:
+                    generally_cleaner = name_a
+                elif station_b_mean < station_a_mean:
+                    generally_cleaner = name_b
+
+            comparisons.append({
+                "station_a": name_a,
+                "station_b": name_b,
+                "shared_dates": shared_dates,
+                "station_a_daily": a_series,
+                "station_b_daily": b_series,
+                "station_a_mean": station_a_mean,
+                "station_b_mean": station_b_mean,
+                "avg_gap_history": avg_gap_history,
+                "generally_cleaner": generally_cleaner,
+                "correlation": correlation,
+                "correlation_label": correlation_label,
+                "current_diff": current_diff,
+                "currently_worse": currently_worse,
+            })
+
+    return comparisons
+
+
 def build_summary(city: str):
     stations = list_stations(city)
     if not stations:
@@ -234,11 +331,14 @@ def build_summary(city: str):
     if not station_summaries:
         return {"city": city, "has_data": False}
 
+    comparisons = compare_stations(station_summaries) if len(station_summaries) >= 2 else []
+
     return {
         "city": city,
         "has_data": True,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "stations": station_summaries,
+        "comparisons": comparisons,
     }
 
 
