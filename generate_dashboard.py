@@ -113,10 +113,10 @@ def render_station_panel(station_name: str, s: dict, identity_color: str) -> tup
           <div class="aqi-band" style="color:{color}">{band}</div>
         </div>
         <div class="current-reading">
-          <div class="current-reading-number" style="color:{instant_color}">{instant_aqi}</div>
+          <div class="current-reading-number" id="live-num-{slug}" style="color:{instant_color}">{instant_aqi}</div>
           <div class="current-reading-meta">
-            <div class="current-reading-label">Current &middot; {instant_band}</div>
-            <div class="current-reading-time">{instant_time} IST &middot; {dominant}</div>
+            <div class="current-reading-label">Current &middot; <span id="live-band-{slug}">{instant_band}</span></div>
+            <div class="current-reading-time"><span id="live-time-{slug}">{instant_time}</span> IST &middot; <span id="live-dominant-{slug}">{dominant}</span></div>
           </div>
         </div>
         <div class="samples-note">Based on {samples_today} reading{'s' if samples_today != 1 else ''} {'so far today' if is_partial_day else 'that day'}</div>
@@ -528,7 +528,7 @@ def render_dashboard(summary: dict) -> str:
       </div>
       <h1>{city} Air Quality</h1>
     </div>
-    <div class="live-badge"><span class="live-dot"></span>Auto-updates every 3 hours</div>
+    <div class="live-badge"><span class="live-dot"></span><span id="live-status-text">Auto-updates every 3 hours</span></div>
   </div>
   <div class="station-count-note">Tracking {len(stations)} CPCB monitoring station{'s' if len(stations) != 1 else ''} independently{' — each has its own sensor and can read differently.' if len(stations) > 1 else '.'}</div>
 
@@ -551,8 +551,89 @@ def render_dashboard(summary: dict) -> str:
 <script>
 {"".join(all_chart_js)}
 </script>
+
+<script>
+// Deliberately a SEPARATE script tag from the Chart.js block above --
+// if the CDN fails to load Chart.js for any reason (network hiccup,
+// ad blocker, etc.), that block throws and stops executing, but this
+// one still runs independently since script tags fail in isolation
+// from each other. Live-updating and charting are unrelated features
+// and a failure in one shouldn't be able to silently take out the
+// other.
+//
+// This does NOT mean the AQI ticks every second -- the underlying
+// government sensors and the scheduled fetch behind this only update
+// every 3 hours. What this DOES do: if you leave this tab open,
+// docs/live.json (a small file rebuilt every time the workflow runs)
+// gets checked periodically, and the "Current" numbers update
+// in-place the moment fresh data is actually published -- so you
+// never need to manually refresh to see it.
+const LIVE_POLL_INTERVAL_MS = 60000; // check every 60s
+let lastCheckedAt = null;
+
+async function refreshLiveData() {{
+  try {{
+    const res = await fetch('./live.json', {{ cache: 'no-store' }});
+    if (!res.ok) return;
+    const data = await res.json();
+
+    for (const slug in data.stations) {{
+      const s = data.stations[slug];
+      const numEl = document.getElementById('live-num-' + slug);
+      const bandEl = document.getElementById('live-band-' + slug);
+      const timeEl = document.getElementById('live-time-' + slug);
+      const domEl = document.getElementById('live-dominant-' + slug);
+      if (numEl) {{ numEl.textContent = s.instant_aqi; numEl.style.color = s.instant_color; }}
+      if (bandEl) bandEl.textContent = s.instant_band;
+      if (timeEl) timeEl.textContent = s.instant_time;
+      if (domEl) domEl.textContent = s.dominant;
+    }}
+
+    lastCheckedAt = Date.now();
+    const statusEl = document.getElementById('live-status-text');
+    if (statusEl) statusEl.textContent = 'Checked just now';
+  }} catch (e) {{
+    // A missed check just means the numbers stay as they were until
+    // the next successful one -- fail silently rather than showing
+    // an error for what's likely a momentary network hiccup.
+  }}
+}}
+
+function updateCheckedAgoText() {{
+  const statusEl = document.getElementById('live-status-text');
+  if (!statusEl || lastCheckedAt === null) return;
+  const secondsAgo = Math.round((Date.now() - lastCheckedAt) / 1000);
+  if (secondsAgo < 5) return;
+  const label = secondsAgo < 60 ? secondsAgo + 's ago' : Math.round(secondsAgo / 60) + 'm ago';
+  statusEl.textContent = 'Checked ' + label;
+}}
+
+refreshLiveData();
+setInterval(refreshLiveData, LIVE_POLL_INTERVAL_MS);
+setInterval(updateCheckedAgoText, 5000);
+</script>
 </body>
 </html>"""
+
+
+def build_live_payload(summary: dict) -> dict:
+    """A small, purpose-built JSON file for the client-side poller --
+    just the per-station "Current" fields, keyed by slug so the
+    browser can match them straight to element ids without needing to
+    replicate the Python slugify logic in JavaScript."""
+    return {
+        "generated_at": summary["generated_at"],
+        "stations": {
+            slugify(name): {
+                "instant_aqi": s["latest_instant_aqi"],
+                "instant_band": s["latest_instant_band"],
+                "instant_color": s["latest_instant_color"],
+                "instant_time": s["latest_instant_time"],
+                "dominant": s["latest_dominant_pollutant"],
+            }
+            for name, s in summary["stations"].items()
+        },
+    }
 
 
 def main():
@@ -572,8 +653,13 @@ def main():
 
     with open(OUTPUT_PATH, "w") as f:
         f.write(html)
-
     print(f"Dashboard written to {OUTPUT_PATH}")
+
+    if summary.get("has_data"):
+        live_path = os.path.join(os.path.dirname(__file__), "docs", "live.json")
+        with open(live_path, "w") as f:
+            json.dump(build_live_payload(summary), f)
+        print(f"Live-poll data written to {live_path}")
 
 
 if __name__ == "__main__":
