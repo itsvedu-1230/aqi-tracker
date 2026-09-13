@@ -1,14 +1,14 @@
 {
   "city": "Bareilly",
   "has_data": true,
-  "generated_at": "2026-09-13T11:16:14.363535+00:00",
+  "generated_at": "2026-09-13T15:46:20.244089+00:00",
   "stations": {
     "Civil Lines, Bareilly - UPPCB": {
       "station": "Civil Lines, Bareilly - UPPCB",
-      "latest_instant_aqi": 58.0,
+      "latest_instant_aqi": 57.0,
       "latest_instant_band": "Satisfactory",
       "latest_instant_color": "#8FA85E",
-      "latest_instant_time": "4:46 PM",
+      "latest_instant_time": "9:16 PM",
       "latest_dominant_pollutant": "SO2",
       "dates": [
         "2026-08-14",
@@ -74,7 +74,7 @@
         60.2,
         55.4,
         54.3,
-        58.7
+        58.2
       ],
       "rolling_7d": [
         64.0,
@@ -110,22 +110,22 @@
         51.2
       ],
       "latest_date": "2026-09-13",
-      "latest_avg_aqi": 58.7,
+      "latest_avg_aqi": 58.2,
       "latest_band": "Satisfactory",
       "latest_color": "#8FA85E",
-      "samples_today": 3,
+      "samples_today": 4,
       "is_partial_day": true,
-      "week_over_week_pct": 31.5,
-      "anomaly_zscore": 1.8,
+      "week_over_week_pct": 31.4,
+      "anomaly_zscore": 1.74,
       "is_anomaly": false,
-      "summary_text": "Average AQI at Civil Lines, Bareilly - UPPCB so far today is 58.7 (Satisfactory), based on 3 readings. The most recent reading, at 4:46 PM, was 58.0 (Satisfactory), driven mainly by SO2. That's 31.5% worse than last week."
+      "summary_text": "Average AQI at Civil Lines, Bareilly - UPPCB so far today is 58.2 (Satisfactory), based on 4 readings. The most recent reading, at 9:16 PM, was 57.0 (Satisfactory), driven mainly by SO2. That's 31.4% worse than last week."
     },
     "Rajendra Nagar, Bareilly - UPPCB": {
       "station": "Rajendra Nagar, Bareilly - UPPCB",
-      "latest_instant_aqi": 53.0,
+      "latest_instant_aqi": 55.0,
       "latest_instant_band": "Satisfactory",
       "latest_instant_color": "#8FA85E",
-      "latest_instant_time": "4:46 PM",
+      "latest_instant_time": "9:16 PM",
       "latest_dominant_pollutant": "PM10",
       "dates": [
         "2026-08-14",
@@ -230,12 +230,12 @@
       "latest_avg_aqi": 55.0,
       "latest_band": "Satisfactory",
       "latest_color": "#8FA85E",
-      "samples_today": 3,
+      "samples_today": 4,
       "is_partial_day": true,
       "week_over_week_pct": 16.4,
       "anomaly_zscore": 0.18,
       "is_anomaly": false,
-      "summary_text": "Average AQI at Rajendra Nagar, Bareilly - UPPCB so far today is 55.0 (Satisfactory), based on 3 readings. The most recent reading, at 4:46 PM, was 53.0 (Satisfactory), driven mainly by PM10. That's 16.4% worse than last week."
+      "summary_text": "Average AQI at Rajendra Nagar, Bareilly - UPPCB so far today is 55.0 (Satisfactory), based on 4 readings. The most recent reading, at 9:16 PM, was 55.0 (Satisfactory), driven mainly by PM10. That's 16.4% worse than last week."
     }
   },
   "comparisons": [
@@ -306,7 +306,7 @@
         60.2,
         55.4,
         54.3,
-        58.7
+        58.2
       ],
       "station_b_daily": [
         67.2,
@@ -347,7 +347,7 @@
       "generally_cleaner": "Civil Lines, Bareilly - UPPCB",
       "correlation": 0.34,
       "correlation_label": "weakly correlated",
-      "current_diff": 5.0,
+      "current_diff": 2.0,
       "currently_worse": "Civil Lines, Bareilly - UPPCB"
     }
   ]
