@@ -1,14 +1,14 @@
 {
   "city": "Bareilly",
   "has_data": true,
-  "generated_at": "2026-09-15T20:57:48.642621+00:00",
+  "generated_at": "2026-09-15T23:29:17.020684+00:00",
   "stations": {
     "Civil Lines, Bareilly - UPPCB": {
       "station": "Civil Lines, Bareilly - UPPCB",
-      "latest_instant_aqi": 57.0,
+      "latest_instant_aqi": 58.0,
       "latest_instant_band": "Satisfactory",
       "latest_instant_color": "#8FA85E",
-      "latest_instant_time": "2:27 AM",
+      "latest_instant_time": "4:59 AM",
       "latest_dominant_pollutant": "SO2",
       "dates": [
         "2026-08-14",
@@ -80,7 +80,7 @@
         58.2,
         55.2,
         52.6,
-        57.0
+        57.5
       ],
       "rolling_7d": [
         64.0,
@@ -116,25 +116,25 @@
         51.2,
         54.1,
         55.4,
-        56.1
+        56.2
       ],
       "latest_date": "2026-09-16",
-      "latest_avg_aqi": 57.0,
+      "latest_avg_aqi": 57.5,
       "latest_band": "Satisfactory",
       "latest_color": "#8FA85E",
-      "samples_today": 1,
+      "samples_today": 2,
       "is_partial_day": true,
-      "week_over_week_pct": 37.4,
-      "anomaly_zscore": 1.11,
+      "week_over_week_pct": 37.6,
+      "anomaly_zscore": 1.16,
       "is_anomaly": false,
-      "summary_text": "Average AQI at Civil Lines, Bareilly - UPPCB so far today is 57.0 (Satisfactory), based on 1 reading. The most recent reading, at 2:27 AM, was 57.0 (Satisfactory), driven mainly by SO2. That's 37.4% worse than last week."
+      "summary_text": "Average AQI at Civil Lines, Bareilly - UPPCB so far today is 57.5 (Satisfactory), based on 2 readings. The most recent reading, at 4:59 AM, was 58.0 (Satisfactory), driven mainly by SO2. That's 37.6% worse than last week."
     },
     "Rajendra Nagar, Bareilly - UPPCB": {
       "station": "Rajendra Nagar, Bareilly - UPPCB",
-      "latest_instant_aqi": 91.0,
+      "latest_instant_aqi": 94.0,
       "latest_instant_band": "Satisfactory",
       "latest_instant_color": "#8FA85E",
-      "latest_instant_time": "2:27 AM",
+      "latest_instant_time": "4:59 AM",
       "latest_dominant_pollutant": "PM10",
       "dates": [
         "2026-08-14",
@@ -206,7 +206,7 @@
         55.0,
         54.8,
         79.4,
-        91.0
+        92.5
       ],
       "rolling_7d": [
         67.2,
@@ -242,18 +242,18 @@
         53.0,
         56.3,
         62.7,
-        73.0
+        73.2
       ],
       "latest_date": "2026-09-16",
-      "latest_avg_aqi": 91.0,
+      "latest_avg_aqi": 92.5,
       "latest_band": "Satisfactory",
       "latest_color": "#8FA85E",
-      "samples_today": 1,
+      "samples_today": 2,
       "is_partial_day": true,
-      "week_over_week_pct": 110.9,
-      "anomaly_zscore": 1.99,
-      "is_anomaly": false,
-      "summary_text": "Average AQI at Rajendra Nagar, Bareilly - UPPCB so far today is 91.0 (Satisfactory), based on 1 reading. The most recent reading, at 2:27 AM, was 91.0 (Satisfactory), driven mainly by PM10. That's 110.9% worse than last week."
+      "week_over_week_pct": 111.6,
+      "anomaly_zscore": 2.06,
+      "is_anomaly": true,
+      "summary_text": "Average AQI at Rajendra Nagar, Bareilly - UPPCB so far today is 92.5 (Satisfactory), based on 2 readings. The most recent reading, at 4:59 AM, was 94.0 (Satisfactory), driven mainly by PM10. That's 111.6% worse than last week. This is unusually higher than the recent norm (z=2.06) \u2014 worth a closer look."
     }
   },
   "comparisons": [
@@ -330,7 +330,7 @@
         58.2,
         55.2,
         52.6,
-        57.0
+        57.5
       ],
       "station_b_daily": [
         67.2,
@@ -366,7 +366,7 @@
         55.0,
         54.8,
         79.4,
-        91.0
+        92.5
       ],
       "station_a_mean": 45.5,
       "station_b_mean": 55.2,
@@ -374,7 +374,7 @@
       "generally_cleaner": "Civil Lines, Bareilly - UPPCB",
       "correlation": 0.41,
       "correlation_label": "moderately correlated",
-      "current_diff": 34.0,
+      "current_diff": 36.0,
       "currently_worse": "Rajendra Nagar, Bareilly - UPPCB"
     }
   ]
